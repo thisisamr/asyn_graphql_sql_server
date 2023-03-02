@@ -1,5 +1,5 @@
 mod schema;
-
+mod time_checker;
 use actix_web::{guard, web, web::Data, App, HttpResponse, HttpServer, Result};
 use async_graphql::{
     http::{playground_source, GraphQLPlaygroundConfig},
@@ -18,15 +18,19 @@ async fn main() -> std::io::Result<()> {
         .data(pool.unwrap())
         .finish();
 
-    println!("GraphiQL IDE: http://localhost:8000");
-
+    println!("GraphiQL IDE: http://localhost:4001/graphql");
+    //time_checker::time_checker::checker().await;
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(schema.clone()))
-            .service(web::resource("/").guard(guard::Post()).to(index))
-            .service(web::resource("/").guard(guard::Get()).to(index_graphiql))
+            .service(web::resource("/graphql").guard(guard::Post()).to(index))
+            .service(
+                web::resource("/graphql")
+                    .guard(guard::Get())
+                    .to(index_graphiql),
+            )
     })
-    .bind("0.0.0.0:8000")?
+    .bind("0.0.0.0:4001")?
     .run()
     .await
 }
@@ -44,6 +48,6 @@ async fn index_graphiql() -> Result<HttpResponse> {
     Ok(HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
         .body(playground_source(GraphQLPlaygroundConfig::new(
-            "http://localhost:8000",
+            "http://localhost:4001/graphql",
         ))))
 }

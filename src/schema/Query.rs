@@ -8,7 +8,7 @@ impl Query {
         "partner"
     }
 
-    async fn all_requests<'ctx>(
+    async fn requestsQuery<'ctx>(
         &self,
         ctx: &Context<'ctx>,
         first: i32,
