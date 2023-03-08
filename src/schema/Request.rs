@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Mssql, Pool};
 #[derive(FromRow, SimpleObject, Debug, Deserialize, Serialize)]
 pub struct RecordCount {
-    count: i32,
+    pub count: i32,
 }
 #[derive(FromRow, SimpleObject, Debug, Deserialize, Serialize)]
 
@@ -38,6 +38,7 @@ pub struct Request {
     deliverydate: Option<String>,
     buildingarea: Option<String>,
     landarea: Option<String>,
+    sqlserveraddedtime: Option<String>,
 }
 #[derive(FromRow, SimpleObject, Debug, Deserialize, Serialize)]
 pub struct Edge {
@@ -56,7 +57,11 @@ pub async fn get_all_requests<'ctx>(
     first: i32,
     after: Option<i32>,
     date: Option<String>,
+    last_sync_timstamp: Option<String>,
 ) -> QueryResponse {
+    // first is null and after is null and an last syynctimstamp is only sent
+    // get the requests where the modifieddatetime >=lastsync date and return it
+
     let mut hasNext: bool = false;
     let pool = ctx.data::<Pool<Mssql>>().unwrap();
     let mut datequery: Option<String> = None;
@@ -94,36 +99,68 @@ pub async fn get_all_requests<'ctx>(
                 HasPriceDifference as haspricedifference ,
                 SyncStatus as syncstatus ,
                 IsPaid as ispaid ,
-                Cast(CAST(DeliveryDate AS date)as varchar) as deliverydate from Requests where IsPaid=1 and Id >{} and AddedDate > '{}'"#,
+                Cast(CAST(DeliveryDate AS date)as varchar) as deliverydate ,Cast(AddedDate as varchar) as sqlserveraddedtime from Requests where IsPaid=1 and Id >{} and AddedDate > '{}'"#,
                     first, cursor_id, datefilter
                 ),
 
-                None => format!(
-                    r#"SELECT TOP ({}) Id as id,
-                UnitType as unittype,
-                RequestStatus as requeststatus,
-                Area as area,
-                AreaType as areatype,
-                Price as price,
-                RequestNumber as requestnumber,
-                Cast(Createdby AS varchar) as createdby,
-                UserId as userid,
-                CAST(AddedDate As varchar) as addeddate,
-                Cast(ModifiedDate As varchar) as modifieddate,
-                SubUnitType as subunittype,
-                SubUnitTypeArea as subunittypearea,
-                LandArea as landarea,
-                CrewTransferCost as crewtransfercost,
-                BuildingArea as buildingarea,
-                StatusDescription as statusdescription,
-                IsArchived as isarchived ,
-                SyncStatusSa as syncstatussa,
-                HasPriceDifference as haspricedifference ,
-                SyncStatus as syncstatus ,
-                IsPaid as ispaid ,
-                Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate from Requests where IsPaid=1and AddedDate > '{}'"#,
-                    first, datefilter
-                ),
+                None => match last_sync_timstamp {
+                    Some(lts) => {
+                        format!(
+                            r#"SELECT Id as id,
+                            UnitType as unittype,
+                            RequestStatus as requeststatus,
+                            Area as area,
+                            AreaType as areatype,
+                            Price as price,
+                            RequestNumber as requestnumber,
+                            Cast(Createdby AS varchar) as createdby,
+                            UserId as userid,
+                            CAST(AddedDate As varchar) as addeddate,
+                            Cast(ModifiedDate As varchar) as modifieddate,
+                            SubUnitType as subunittype,
+                            SubUnitTypeArea as subunittypearea,
+                            LandArea as landarea,
+                            CrewTransferCost as crewtransfercost,
+                            BuildingArea as buildingarea,
+                            StatusDescription as statusdescription,
+                            IsArchived as isarchived ,
+                            SyncStatusSa as syncstatussa,
+                            HasPriceDifference as haspricedifference ,
+                            SyncStatus as syncstatus ,
+                            IsPaid as ispaid ,
+                            Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate,Cast(AddedDate as varchar) as sqlserveraddedtime from Requests where IsPaid=1 and AddedDate <= Cast('{}' As datetime2) and ModifiedDate IS NOT NULL and ModifiedDate > Cast('{}' AS datetime2);"#,
+                             datefilter, lts
+                        )
+                    }
+                    None => {
+                        format!(
+                            r#"SELECT TOP ({}) Id as id,
+                            UnitType as unittype,
+                            RequestStatus as requeststatus,
+                            Area as area,
+                            AreaType as areatype,
+                            Price as price,
+                            RequestNumber as requestnumber,
+                            Cast(Createdby AS varchar) as createdby,
+                            UserId as userid,
+                            CAST(AddedDate As varchar) as addeddate,
+                            Cast(ModifiedDate As varchar) as modifieddate,
+                            SubUnitType as subunittype,
+                            SubUnitTypeArea as subunittypearea,
+                            LandArea as landarea,
+                            CrewTransferCost as crewtransfercost,
+                            BuildingArea as buildingarea,
+                            StatusDescription as statusdescription,
+                            IsArchived as isarchived ,
+                            SyncStatusSa as syncstatussa,
+                            HasPriceDifference as haspricedifference ,
+                            SyncStatus as syncstatus ,
+                            IsPaid as ispaid ,
+                            Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate ,Cast(AddedDate as varchar) as sqlserveraddedtime from Requests where IsPaid=1 and AddedDate > Cast('{}'as datetime2))"#,
+                            first, datefilter
+                        )
+                    }
+                },
             };
             q
         }
@@ -152,7 +189,7 @@ pub async fn get_all_requests<'ctx>(
                 HasPriceDifference as haspricedifference ,
                 SyncStatus as syncstatus ,
                 IsPaid as ispaid ,
-                Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate from Requests where IsPaid=1 and Id >{}"#,
+                Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate,Cast(AddedDate as varchar) as sqlserveraddedtime from Requests where IsPaid=1 and Id >{}"#,
                     first, cursor_id
                 ),
 
@@ -179,13 +216,14 @@ pub async fn get_all_requests<'ctx>(
                 HasPriceDifference as haspricedifference ,
                 SyncStatus as syncstatus ,
                 IsPaid as ispaid ,
-                Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate from Requests where IsPaid=1"#,
+                Cast(CAST(DeliveryDate AS date) as varchar) as deliverydate,Cast(AddedDate as varchar) as sqlserveraddedtime from Requests where IsPaid=1"#,
                     first
                 ),
             };
             q
         }
     };
+
     let row: Vec<Request> = sqlx::query_as(&q).fetch_all(pool).await.unwrap();
     if row.len() != 0 {
         let curs = row[row.len() - 1].id;
@@ -229,6 +267,51 @@ pub async fn get_all_requests<'ctx>(
                 hasNextPage: false,
             },
             edges: Vec::new(),
+        }
+    }
+}
+
+pub async fn getUpserts<'ctx>(
+    _slef: &Query::Query,
+    ctx: &Context<'ctx>,
+    last_sync_timestamp: String,
+) -> Vec<Request> {
+    let pool = ctx.data::<Pool<Mssql>>().unwrap();
+    let parsed = NaiveDateTime::parse_from_str(last_sync_timestamp.trim(), "%Y-%m-%d %H:%M:%S%.f");
+    match parsed {
+        Ok(parsed_value) => {
+            let q = format!(
+                r#"SELECT Id as id,
+            UnitType as unittype,
+            RequestStatus as requeststatus,
+            Area as area,
+            AreaType as areatype,
+            Price as price,
+            RequestNumber as requestnumber,
+            Cast(Createdby AS varchar) as createdby,
+            UserId as userid,
+            CAST(AddedDate As varchar) as addeddate,
+            Cast(ModifiedDate As varchar) as modifieddate,
+            SubUnitType as subunittype,
+            SubUnitTypeArea as subunittypearea,
+            LandArea as landarea,
+            CrewTransferCost as crewtransfercost,
+            BuildingArea as buildingarea,
+            StatusDescription as statusdescription,
+            IsArchived as isarchived ,
+            SyncStatusSa as syncstatussa,
+            HasPriceDifference as haspricedifference ,
+            SyncStatus as syncstatus ,
+            IsPaid as ispaid ,
+            Cast(CAST(DeliveryDate AS date)as varchar) as deliverydate,Cast(AddedDate as varchar) as sqlserveraddedtime from Requests where IsPaid=1 and ModifiedDate >='{}'"#,
+                parsed_value
+            );
+            // get all requests the
+            sqlx::query_as(&q).fetch_all(pool).await.unwrap()
+        }
+        Err(e) => {
+            println!("{:?}", e);
+            Vec::new()
         }
     }
 }

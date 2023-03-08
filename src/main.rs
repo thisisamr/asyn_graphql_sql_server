@@ -7,6 +7,7 @@ use async_graphql::{
 };
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use sqlx::mssql::MssqlPoolOptions;
+//"mssql://sa:$@edge_DB01@10.169.169.31/REMVC3"
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -19,7 +20,8 @@ async fn main() -> std::io::Result<()> {
         .finish();
 
     println!("GraphiQL IDE: http://localhost:4001/graphql");
-    //time_checker::time_checker::checker().await;
+    
+    time_checker::time_checker::checker().await;
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(schema.clone()))

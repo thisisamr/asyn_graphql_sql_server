@@ -9,35 +9,36 @@ pub struct TimeResponse {
     currentLocalTime: String,
 }
 pub async fn checker() {
-    let mut interval: Interval = time::interval(Duration::from_secs(10));
+  //  let mut interval: Interval = time::interval(Duration::from_secs(10));
 
-    loop {
-        interval.tick().await;
+  
+       // interval.tick().await;
         let state = expired().await;
 
         match state {
             Ok(expired) => {
                 if expired {
-                    panic!("YOUR LICENSE HAS EXPIRED PLEASE CONTACT THE AUTHOR AMR SOLIMAN")
+                    panic!("\n\n💀💀YOUR LICENSE HAS EXPIRED PLEASE CONTACT THE AUTHOR AMR SOLIMAN💀💀\n\n")
                 } else {
-                    println!("valid license 🔐");
+                    println!("🚀🚀READY");
                 }
             }
-            Err(e) => panic!("{:#?}", e),
+            Err(e) => panic!("\n⛔PLease make sure you are connected to the internet\n"),
         }
-    }
+    
 }
 
-async fn expired() -> Result<bool, reqwest::Error> {
+pub async fn expired() -> Result<bool, reqwest::Error> {
     let res = reqwest::get("https://www.timeapi.io/api/TimeZone/zone?timeZone=Africa/Cairo")
         .await?
         .json::<TimeResponse>()
         .await;
-    println!("{:?}", res.as_ref().unwrap().currentLocalTime);
+    //println!("{:?}", res.as_ref().unwrap().currentLocalTime);
     match res {
         Ok(time) => {
+            time.currentLocalTime.parse::<NaiveDateTime>().unwrap();
             let result = time.currentLocalTime.parse::<NaiveDateTime>().unwrap()
-                > "2023-04-02T00:48:08.9930463"
+                > "2023-03-21T20:05:08.9930463"
                     .parse::<NaiveDateTime>()
                     .unwrap();
             Ok(result)

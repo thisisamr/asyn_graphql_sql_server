@@ -10,7 +10,7 @@ codegen-for-async-graphql = "0.2.6"
 actix-web = "4.3.1"
 chrono = { version = "0.4.23", features = ["serde"] }
 serde = { version = "1.0.152", features = ["derive"] }
-sqlx = { version = "0.6.2", features = ["mssql", "runtime-actix-rustls", "chrono"] }
+sqlx = { version = "0.6.2", features = ["mssql", "runtime-actix-rustls", "chrono", "tls","bit-vec"] }
 async-graphql = "5.0.6"
 async-graphql-actix-web = "5.0.6"
 reqwest = { version = "0.11.14", features = ["json"] }
